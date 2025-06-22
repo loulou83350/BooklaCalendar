@@ -30,7 +30,7 @@ const MONTHS = [
 ]
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
 
-export default function BooklaCalendarFramerTrueGroups(props) {
+export default function BooklaCalendarFramerDynamic(props) {
     const {
         // Configuration Bookla
         booklaConfig = {
@@ -40,25 +40,118 @@ export default function BooklaCalendarFramerTrueGroups(props) {
             resourceId: "8f653843-ae64-4d1a-9701-3a1ab12d133c",
         },
 
-        // Services
-        services = {
+        // Configuration des Services Dynamiques
+        servicesConfig = {
+            numberOfServices: 3,
             service1: {
+                enabled: true,
                 name: "Service Journée",
                 price: 300,
                 apaPrice: 100,
                 booklaId: "e7c09d8e-e012-4b82-8b31-d584fa4be8ae",
+                description: "Service complet pour une journée en mer",
             },
             service2: {
+                enabled: true,
                 name: "Service Sunset",
                 price: 200,
                 apaPrice: 50,
                 booklaId: "1b994905-1980-4c7d-813a-66fcb8d88f92",
+                description: "Escapade romantique au coucher du soleil",
             },
             service3: {
+                enabled: true,
                 name: "Service Mix",
                 price: 350,
                 apaPrice: 120,
                 booklaId: "7c3ca43d-37b4-483e-b3f6-39e8aed4afe9",
+                description: "Expérience mixte personnalisée",
+            },
+            service4: {
+                enabled: false,
+                name: "Service Premium",
+                price: 500,
+                apaPrice: 200,
+                booklaId: "",
+                description: "Service premium avec extras",
+            },
+            service5: {
+                enabled: false,
+                name: "Service Express",
+                price: 150,
+                apaPrice: 30,
+                booklaId: "",
+                description: "Service rapide 2h",
+            },
+        },
+
+        // Configuration du Formulaire
+        formConfig = {
+            fields: {
+                firstName: {
+                    enabled: true,
+                    required: true,
+                    label: "Prénom",
+                    placeholder: "Votre prénom",
+                },
+                lastName: {
+                    enabled: true,
+                    required: true,
+                    label: "Nom",
+                    placeholder: "Votre nom",
+                },
+                email: {
+                    enabled: true,
+                    required: true,
+                    label: "Email",
+                    placeholder: "votre@email.com",
+                },
+                phone: {
+                    enabled: true,
+                    required: true,
+                    label: "Téléphone",
+                    placeholder: "+33 6 12 34 56 78",
+                },
+                company: {
+                    enabled: false,
+                    required: false,
+                    label: "Entreprise",
+                    placeholder: "Nom de votre entreprise",
+                },
+                address: {
+                    enabled: false,
+                    required: false,
+                    label: "Adresse",
+                    placeholder: "Votre adresse",
+                },
+                specialRequests: {
+                    enabled: false,
+                    required: false,
+                    label: "Demandes spéciales",
+                    placeholder: "Vos demandes particulières...",
+                },
+                numberOfPeople: {
+                    enabled: false,
+                    required: false,
+                    label: "Nombre de personnes",
+                    placeholder: "Ex: 4",
+                },
+            },
+            customFields: {
+                field1: {
+                    enabled: false,
+                    required: false,
+                    label: "Champ personnalisé 1",
+                    placeholder: "Valeur personnalisée",
+                    type: "text",
+                },
+                field2: {
+                    enabled: false,
+                    required: false,
+                    label: "Champ personnalisé 2",
+                    placeholder: "Autre valeur",
+                    type: "text",
+                },
             },
         },
 
@@ -88,10 +181,6 @@ export default function BooklaCalendarFramerTrueGroups(props) {
         textsForm = {
             chooseTimeTitle: "Choisissez un horaire",
             bookingFormTitle: "Réservation",
-            firstNameLabel: "Prénom",
-            lastNameLabel: "Nom",
-            emailLabel: "Email",
-            phoneLabel: "Téléphone",
             summaryTitle: "Récapitulatif",
             termsText: "J'accepte les",
             termsLinkText: "conditions générales",
@@ -99,6 +188,7 @@ export default function BooklaCalendarFramerTrueGroups(props) {
             bookButtonText: "Réserver",
             cancelButtonText: "Annuler",
             bookingLoadingText: "Création en cours...",
+            requiredFieldsText: "Les champs marqués d'un * sont obligatoires",
         },
 
         // Textes Succès
@@ -170,9 +260,6 @@ export default function BooklaCalendarFramerTrueGroups(props) {
     const today = new Date()
     const [currentYear, setCurrentYear] = React.useState(today.getFullYear())
     const [currentMonth, setCurrentMonth] = React.useState(today.getMonth())
-    const [selectedServiceId, setSelectedServiceId] = React.useState(
-        services.service1.booklaId
-    )
     const [availableSlots, setAvailableSlots] = React.useState({})
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState(null)
@@ -180,42 +267,102 @@ export default function BooklaCalendarFramerTrueGroups(props) {
     // États pour la réservation
     const [selectedDate, setSelectedDate] = React.useState(null)
     const [selectedTimeSlot, setSelectedTimeSlot] = React.useState(null)
+    const [selectedServiceId, setSelectedServiceId] = React.useState("")
     const [showTimeSelection, setShowTimeSelection] = React.useState(false)
     const [showBookingForm, setShowBookingForm] = React.useState(false)
     const [isBooking, setIsBooking] = React.useState(false)
     const [bookingSuccess, setBookingSuccess] = React.useState(null)
-    const [customerInfo, setCustomerInfo] = React.useState({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        termsAccepted: false,
-    })
 
-    // Configuration des services dynamique
-    const SERVICES = [
-        {
-            id: services.service1.booklaId,
-            name: services.service1.name,
-            basePrice: services.service1.price,
-            apaPrice: services.service1.apaPrice,
-        },
-        {
-            id: services.service2.booklaId,
-            name: services.service2.name,
-            basePrice: services.service2.price,
-            apaPrice: services.service2.apaPrice,
-        },
-        {
-            id: services.service3.booklaId,
-            name: services.service3.name,
-            basePrice: services.service3.price,
-            apaPrice: services.service3.apaPrice,
-        },
-    ]
+    // État dynamique du formulaire
+    const [customerInfo, setCustomerInfo] = React.useState({})
+
+    // Génération dynamique des services activés
+    const getEnabledServices = React.useMemo(() => {
+        const services = []
+        const serviceKeys = [
+            "service1",
+            "service2",
+            "service3",
+            "service4",
+            "service5",
+        ]
+
+        for (let i = 0; i < Math.min(servicesConfig.numberOfServices, 5); i++) {
+            const serviceKey = serviceKeys[i]
+            const serviceData = servicesConfig[serviceKey]
+
+            if (serviceData && serviceData.enabled && serviceData.booklaId) {
+                services.push({
+                    id: serviceData.booklaId,
+                    name: serviceData.name,
+                    basePrice: serviceData.price,
+                    apaPrice: serviceData.apaPrice,
+                    description: serviceData.description,
+                })
+            }
+        }
+
+        return services
+    }, [servicesConfig])
+
+    // Initialiser le service sélectionné
+    React.useEffect(() => {
+        if (getEnabledServices.length > 0 && !selectedServiceId) {
+            setSelectedServiceId(getEnabledServices[0].id)
+        }
+    }, [getEnabledServices, selectedServiceId])
+
+    // Génération dynamique des champs du formulaire
+    const getFormFields = React.useMemo(() => {
+        const fields = []
+
+        // Champs standards
+        Object.entries(formConfig.fields).forEach(([key, field]) => {
+            if (field.enabled) {
+                fields.push({
+                    key,
+                    ...field,
+                    type:
+                        key === "email"
+                            ? "email"
+                            : key === "phone"
+                              ? "tel"
+                              : "text",
+                })
+            }
+        })
+
+        // Champs personnalisés
+        Object.entries(formConfig.customFields).forEach(([key, field]) => {
+            if (field.enabled) {
+                fields.push({
+                    key,
+                    ...field,
+                })
+            }
+        })
+
+        return fields
+    }, [formConfig])
+
+    // Initialiser customerInfo avec les champs dynamiques
+    React.useEffect(() => {
+        const initialInfo = { termsAccepted: false }
+        getFormFields.forEach((field) => {
+            if (!customerInfo.hasOwnProperty(field.key)) {
+                initialInfo[field.key] = ""
+            }
+        })
+
+        if (Object.keys(initialInfo).length > 1) {
+            setCustomerInfo((prev) => ({ ...prev, ...initialInfo }))
+        }
+    }, [getFormFields])
 
     // Hook pour récupérer les disponibilités
     React.useEffect(() => {
+        if (!selectedServiceId) return
+
         const fetchAvailability = async () => {
             setLoading(true)
             setError(null)
@@ -235,7 +382,7 @@ export default function BooklaCalendarFramerTrueGroups(props) {
                 const toDate = endOfMonth.toISOString()
 
                 console.log(
-                    `📅 Récupération disponibilités: ${fromDate} → ${toDate}`
+                    `📅 Récupération disponibilités pour ${selectedServiceId}: ${fromDate} → ${toDate}`
                 )
 
                 const apiUrl = `${booklaConfig.baseUrl}/api/v1/companies/${booklaConfig.organizationId}/services/${selectedServiceId}/times`
@@ -309,14 +456,32 @@ export default function BooklaCalendarFramerTrueGroups(props) {
         fetchAvailability()
     }, [currentYear, currentMonth, selectedServiceId, booklaConfig])
 
+    // Validation du formulaire dynamique
+    const validateForm = () => {
+        const requiredFields = getFormFields.filter((field) => field.required)
+        for (const field of requiredFields) {
+            if (
+                !customerInfo[field.key] ||
+                customerInfo[field.key].trim() === ""
+            ) {
+                alert(`Le champ "${field.label}" est obligatoire`)
+                return false
+            }
+        }
+
+        if (!customerInfo.termsAccepted) {
+            alert("Vous devez accepter les conditions générales")
+            return false
+        }
+
+        return true
+    }
+
     // Workflow de réservation Frontend-Only
     const handleBookingFrontendOnly = async (e) => {
         e.preventDefault()
 
-        if (!customerInfo.termsAccepted) {
-            alert("Vous devez accepter les conditions générales")
-            return
-        }
+        if (!validateForm()) return
 
         if (!selectedTimeSlot) {
             alert("Aucun créneau sélectionné")
@@ -326,10 +491,20 @@ export default function BooklaCalendarFramerTrueGroups(props) {
         setIsBooking(true)
 
         try {
-            const service = SERVICES.find((s) => s.id === selectedServiceId)
+            const service = getEnabledServices.find(
+                (s) => s.id === selectedServiceId
+            )
             if (!service) throw new Error("Service non trouvé")
 
-            console.log("🚀 === WORKFLOW FRONTEND-ONLY FRAMER GROUPÉ ===")
+            console.log("🚀 === WORKFLOW FRONTEND-ONLY DYNAMIQUE ===")
+
+            // Préparer les données client avec les champs dynamiques
+            const clientData = {}
+            getFormFields.forEach((field) => {
+                if (customerInfo[field.key]) {
+                    clientData[field.key] = customerInfo[field.key]
+                }
+            })
 
             // ÉTAPE 1: Créer réservation
             const bookingPayload = {
@@ -339,18 +514,13 @@ export default function BooklaCalendarFramerTrueGroups(props) {
                     selectedTimeSlot.resourceId || booklaConfig.resourceId,
                 startTime: selectedTimeSlot.startTime,
                 endTime: selectedTimeSlot.endTime,
-                client: {
-                    firstName: customerInfo.firstName,
-                    lastName: customerInfo.lastName,
-                    email: customerInfo.email,
-                    phone: customerInfo.phone,
-                },
+                client: clientData,
                 spots: 1,
                 status: "pending",
                 requirePayment: true,
                 termsAccepted: customerInfo.termsAccepted,
                 metadata: {
-                    source: "framer_true_groups",
+                    source: "framer_dynamic",
                     payment_method: "bookla_integrated",
                     domain: window.location.hostname,
                     total_amount: (
@@ -358,6 +528,7 @@ export default function BooklaCalendarFramerTrueGroups(props) {
                     ).toString(),
                     service_name: service.name,
                     created_at: new Date().toISOString(),
+                    form_fields: JSON.stringify(clientData),
                 },
             }
 
@@ -396,15 +567,16 @@ export default function BooklaCalendarFramerTrueGroups(props) {
                 bookingId: bookingId,
                 amount: (service.basePrice + service.apaPrice) * 100,
                 currency: "EUR",
-                description: `Réservation ${service.name} - Framer Groupé`,
-                successUrl: `${urlsConfig.successUrl}?booking=${bookingId}&payment=success&source=framer_groups`,
-                cancelUrl: `${urlsConfig.cancelUrl}?booking=${bookingId}&payment=cancelled&source=framer_groups`,
+                description: `Réservation ${service.name} - Framer Dynamique`,
+                successUrl: `${urlsConfig.successUrl}?booking=${bookingId}&payment=success&source=framer_dynamic`,
+                cancelUrl: `${urlsConfig.cancelUrl}?booking=${bookingId}&payment=cancelled&source=framer_dynamic`,
                 metadata: {
                     bookingId: bookingId,
-                    source: "framer_true_groups",
+                    source: "framer_dynamic",
                     serviceName: service.name,
-                    customerName: `${customerInfo.firstName} ${customerInfo.lastName}`,
-                    customerEmail: customerInfo.email,
+                    customerName:
+                        `${clientData.firstName || ""} ${clientData.lastName || ""}`.trim(),
+                    customerEmail: clientData.email || "",
                     totalAmount: (
                         service.basePrice + service.apaPrice
                     ).toString(),
@@ -485,19 +657,27 @@ export default function BooklaCalendarFramerTrueGroups(props) {
             setShowTimeSelection(false)
             setSelectedDate(null)
             setSelectedTimeSlot(null)
-            setCustomerInfo({
-                firstName: "",
-                lastName: "",
-                email: "",
-                phone: "",
-                termsAccepted: false,
+
+            // Réinitialiser avec les champs dynamiques
+            const resetInfo = { termsAccepted: false }
+            getFormFields.forEach((field) => {
+                resetInfo[field.key] = ""
             })
+            setCustomerInfo(resetInfo)
         } catch (error) {
             console.error("❌ ERREUR CRITIQUE:", error)
             alert(`Erreur: ${error.message}`)
         } finally {
             setIsBooking(false)
         }
+    }
+
+    // Mise à jour des champs du formulaire
+    const updateFormField = (key, value) => {
+        setCustomerInfo((prev) => ({
+            ...prev,
+            [key]: value,
+        }))
     }
 
     // Génération des jours du calendrier
@@ -630,10 +810,35 @@ export default function BooklaCalendarFramerTrueGroups(props) {
           }
         : { display: "none" }
 
+    // Vérification des services disponibles
+    if (getEnabledServices.length === 0) {
+        return (
+            <div style={containerStyle}>
+                <div style={{ textAlign: "center", padding: "80px 20px" }}>
+                    <div style={{ fontSize: "60px", marginBottom: "16px" }}>
+                        ⚠️
+                    </div>
+                    <h3
+                        style={{
+                            color: colors.errorColor,
+                            marginBottom: "8px",
+                        }}
+                    >
+                        Aucun service configuré
+                    </h3>
+                    <p>
+                        Veuillez activer au moins un service dans la
+                        configuration.
+                    </p>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div style={containerStyle}>
             <style>{`
-                @keyframes spin-true-groups {
+                @keyframes spin-dynamic {
                     0% { transform: rotate(0deg); }
                     100% { transform: rotate(360deg); }
                 }
@@ -707,14 +912,14 @@ export default function BooklaCalendarFramerTrueGroups(props) {
                     }}
                     disabled={loading}
                 >
-                    {SERVICES.map((service) => (
+                    {getEnabledServices.map((service) => (
                         <option key={service.id} value={service.id}>
                             {service.name}
                         </option>
                     ))}
                 </select>
 
-                {SERVICES.find((s) => s.id === selectedServiceId) && (
+                {getEnabledServices.find((s) => s.id === selectedServiceId) && (
                     <div
                         style={{
                             marginTop: `${dimensions.gap}px`,
@@ -726,17 +931,36 @@ export default function BooklaCalendarFramerTrueGroups(props) {
                             margin: `${dimensions.gap}px auto 0`,
                         }}
                     >
+                        <div
+                            style={{
+                                marginBottom: `${dimensions.gap * 0.5}px`,
+                            }}
+                        >
+                            <span
+                                style={{
+                                    fontStyle: "italic",
+                                    fontSize: `${typography.smallTextFontSize}px`,
+                                    color: `${colors.textColor}99`,
+                                }}
+                            >
+                                {
+                                    getEnabledServices.find(
+                                        (s) => s.id === selectedServiceId
+                                    )?.description
+                                }
+                            </span>
+                        </div>
                         <div>
                             <span>{textsInterface.priceLabel} </span>
                             <span style={{ fontWeight: "600" }}>
                                 {
-                                    SERVICES.find(
+                                    getEnabledServices.find(
                                         (s) => s.id === selectedServiceId
                                     ).basePrice
                                 }
                                 € +{" "}
                                 {
-                                    SERVICES.find(
+                                    getEnabledServices.find(
                                         (s) => s.id === selectedServiceId
                                     ).apaPrice
                                 }
@@ -752,10 +976,12 @@ export default function BooklaCalendarFramerTrueGroups(props) {
                             }}
                         >
                             {textsInterface.totalLabel}{" "}
-                            {SERVICES.find((s) => s.id === selectedServiceId)
-                                .basePrice +
-                                SERVICES.find((s) => s.id === selectedServiceId)
-                                    .apaPrice}
+                            {getEnabledServices.find(
+                                (s) => s.id === selectedServiceId
+                            ).basePrice +
+                                getEnabledServices.find(
+                                    (s) => s.id === selectedServiceId
+                                ).apaPrice}
                             €
                         </div>
                     </div>
@@ -925,8 +1151,7 @@ export default function BooklaCalendarFramerTrueGroups(props) {
                                 border: `4px solid ${colors.secondaryColor}`,
                                 borderTop: `4px solid ${colors.primaryColor}`,
                                 borderRadius: "50%",
-                                animation:
-                                    "spin-true-groups 1s linear infinite",
+                                animation: "spin-dynamic 1s linear infinite",
                             }}
                         ></div>
                         <p
@@ -1070,7 +1295,7 @@ export default function BooklaCalendarFramerTrueGroups(props) {
                                     : ""}{" "}
                                 pour{" "}
                                 {
-                                    SERVICES.find(
+                                    getEnabledServices.find(
                                         (s) => s.id === selectedServiceId
                                     )?.name
                                 }
@@ -1091,16 +1316,18 @@ export default function BooklaCalendarFramerTrueGroups(props) {
                                         margin: "0",
                                     }}
                                 >
-                                    📁 <strong>VRAIES SOUS-CATÉGORIES:</strong>{" "}
-                                    Organisation parfaite dans Framer !
+                                    🔧 <strong>SERVICES DYNAMIQUES:</strong>{" "}
+                                    {getEnabledServices.length} service
+                                    {getEnabledServices.length > 1 ? "s" : ""}{" "}
+                                    activé
+                                    {getEnabledServices.length > 1 ? "s" : ""} •
+                                    Formulaire: {getFormFields.length} champ
+                                    {getFormFields.length > 1 ? "s" : ""}
                                 </p>
                             </div>
                         </div>
                     )}
             </div>
-
-            {/* Modals de réservation (simplifiées pour l'espace) */}
-            {/* Je garde les mêmes modals que dans les versions précédentes */}
 
             {/* Modal de sélection d'horaire */}
             {showTimeSelection && selectedDate && (
@@ -1195,7 +1422,7 @@ export default function BooklaCalendarFramerTrueGroups(props) {
                                             }}
                                         >
                                             {
-                                                SERVICES.find(
+                                                getEnabledServices.find(
                                                     (s) =>
                                                         s.id ===
                                                         selectedServiceId
@@ -1229,13 +1456,662 @@ export default function BooklaCalendarFramerTrueGroups(props) {
                 </div>
             )}
 
-            {/* Les autres modals suivent la même structure... */}
+            {/* Modal formulaire de réservation DYNAMIQUE */}
+            {showBookingForm && selectedDate && selectedTimeSlot && (
+                <div
+                    style={{
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: "rgba(0, 0, 0, 0.5)",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        zIndex: 1000,
+                        padding: `${dimensions.gap}px`,
+                    }}
+                >
+                    <div
+                        style={{
+                            backgroundColor: colors.backgroundColor,
+                            borderRadius: `${dimensions.borderRadius}px`,
+                            padding: `${dimensions.padding}px`,
+                            width: "100%",
+                            maxWidth: "500px",
+                            maxHeight: "90vh",
+                            overflowY: "auto",
+                            boxShadow: "0 25px 50px rgba(0, 0, 0, 0.25)",
+                        }}
+                    >
+                        <h3
+                            style={{
+                                fontSize: `${typography.titleFontSize * 0.8}px`,
+                                fontWeight: "700",
+                                textAlign: "center",
+                                marginBottom: `${dimensions.gap * 0.5}px`,
+                                margin: `0 0 ${dimensions.gap * 0.5}px 0`,
+                            }}
+                        >
+                            {textsForm.bookingFormTitle} -{" "}
+                            {
+                                getEnabledServices.find(
+                                    (s) => s.id === selectedServiceId
+                                )?.name
+                            }
+                        </h3>
+                        <p
+                            style={{
+                                textAlign: "center",
+                                marginBottom: `${dimensions.gap * 0.5}px`,
+                                color: `${colors.textColor}99`,
+                                margin: `0 0 ${dimensions.gap * 0.5}px 0`,
+                            }}
+                        >
+                            Date: {selectedDate}
+                        </p>
+                        <p
+                            style={{
+                                textAlign: "center",
+                                marginBottom: `${dimensions.gap * 1.5}px`,
+                                color: `${colors.textColor}99`,
+                                margin: `0 0 ${dimensions.gap * 1.5}px 0`,
+                            }}
+                        >
+                            Horaire:{" "}
+                            {formatTimeString(selectedTimeSlot.startTime)}
+                            {selectedTimeSlot.endTime &&
+                                ` - ${formatTimeString(selectedTimeSlot.endTime)}`}
+                        </p>
+
+                        <form
+                            onSubmit={handleBookingFrontendOnly}
+                            style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: `${dimensions.gap}px`,
+                            }}
+                        >
+                            {/* Champs dynamiques du formulaire */}
+                            {getFormFields.map((field) => (
+                                <div
+                                    key={field.key}
+                                    style={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: `${dimensions.gap * 0.5}px`,
+                                    }}
+                                >
+                                    <label
+                                        style={{
+                                            fontWeight: "600",
+                                            fontSize: `${typography.labelFontSize}px`,
+                                        }}
+                                    >
+                                        {field.label} {field.required && "*"}
+                                    </label>
+                                    {field.type === "textarea" ? (
+                                        <textarea
+                                            name={field.key}
+                                            value={
+                                                customerInfo[field.key] || ""
+                                            }
+                                            onChange={(e) =>
+                                                updateFormField(
+                                                    field.key,
+                                                    e.target.value
+                                                )
+                                            }
+                                            placeholder={field.placeholder}
+                                            style={{
+                                                padding: `${dimensions.inputPadding}px`,
+                                                borderRadius: `${dimensions.borderRadius * 0.75}px`,
+                                                border: `1px solid ${colors.borderColor}`,
+                                                backgroundColor:
+                                                    colors.backgroundColor,
+                                                color: colors.textColor,
+                                                fontSize: `${typography.textFontSize}px`,
+                                                fontFamily:
+                                                    typography.fontFamily,
+                                                outline: "none",
+                                                minHeight: "80px",
+                                                resize: "vertical",
+                                            }}
+                                            required={field.required}
+                                        />
+                                    ) : (
+                                        <input
+                                            type={field.type}
+                                            name={field.key}
+                                            value={
+                                                customerInfo[field.key] || ""
+                                            }
+                                            onChange={(e) =>
+                                                updateFormField(
+                                                    field.key,
+                                                    e.target.value
+                                                )
+                                            }
+                                            placeholder={field.placeholder}
+                                            style={{
+                                                padding: `${dimensions.inputPadding}px`,
+                                                borderRadius: `${dimensions.borderRadius * 0.75}px`,
+                                                border: `1px solid ${colors.borderColor}`,
+                                                backgroundColor:
+                                                    colors.backgroundColor,
+                                                color: colors.textColor,
+                                                fontSize: `${typography.textFontSize}px`,
+                                                fontFamily:
+                                                    typography.fontFamily,
+                                                outline: "none",
+                                            }}
+                                            required={field.required}
+                                        />
+                                    )}
+                                </div>
+                            ))}
+
+                            {getEnabledServices.find(
+                                (s) => s.id === selectedServiceId
+                            ) && (
+                                <div
+                                    style={{
+                                        padding: `${dimensions.gap}px`,
+                                        backgroundColor: colors.secondaryColor,
+                                        borderRadius: `${dimensions.borderRadius * 0.75}px`,
+                                        border: `1px solid ${colors.borderColor}`,
+                                    }}
+                                >
+                                    <h4
+                                        style={{
+                                            fontWeight: "600",
+                                            textAlign: "center",
+                                            marginBottom: `${dimensions.gap * 0.75}px`,
+                                            margin: `0 0 ${dimensions.gap * 0.75}px 0`,
+                                            fontSize: `${typography.labelFontSize}px`,
+                                        }}
+                                    >
+                                        {textsForm.summaryTitle}
+                                    </h4>
+                                    <div style={{ textAlign: "center" }}>
+                                        <div
+                                            style={{
+                                                marginBottom: `${dimensions.gap * 0.5}px`,
+                                                fontStyle: "italic",
+                                                fontSize: `${typography.smallTextFontSize}px`,
+                                            }}
+                                        >
+                                            {
+                                                getEnabledServices.find(
+                                                    (s) =>
+                                                        s.id ===
+                                                        selectedServiceId
+                                                )?.description
+                                            }
+                                        </div>
+                                        <div>
+                                            <span>
+                                                {textsInterface.priceLabel}{" "}
+                                            </span>
+                                            <span style={{ fontWeight: "600" }}>
+                                                {
+                                                    getEnabledServices.find(
+                                                        (s) =>
+                                                            s.id ===
+                                                            selectedServiceId
+                                                    ).basePrice
+                                                }
+                                                € +{" "}
+                                                {
+                                                    getEnabledServices.find(
+                                                        (s) =>
+                                                            s.id ===
+                                                            selectedServiceId
+                                                    ).apaPrice
+                                                }
+                                                € {textsInterface.apaLabel}
+                                            </span>
+                                        </div>
+                                        <div
+                                            style={{
+                                                fontSize: `${typography.titleFontSize * 0.8}px`,
+                                                fontWeight: "700",
+                                                color: colors.primaryColor,
+                                                marginTop: `${dimensions.gap * 0.5}px`,
+                                            }}
+                                        >
+                                            {textsInterface.totalLabel}{" "}
+                                            {getEnabledServices.find(
+                                                (s) =>
+                                                    s.id === selectedServiceId
+                                            ).basePrice +
+                                                getEnabledServices.find(
+                                                    (s) =>
+                                                        s.id ===
+                                                        selectedServiceId
+                                                ).apaPrice}
+                                            €
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Note sur les champs obligatoires */}
+                            {getFormFields.some((field) => field.required) && (
+                                <div
+                                    style={{
+                                        padding: `${dimensions.gap * 0.75}px`,
+                                        backgroundColor: `${colors.primaryColor}10`,
+                                        borderRadius: `${dimensions.borderRadius * 0.5}px`,
+                                        fontSize: `${typography.smallTextFontSize}px`,
+                                        color: colors.primaryColor,
+                                        textAlign: "center",
+                                    }}
+                                >
+                                    {textsForm.requiredFieldsText}
+                                </div>
+                            )}
+
+                            <div
+                                style={{
+                                    padding: `${dimensions.gap}px`,
+                                    backgroundColor: colors.secondaryColor,
+                                    borderRadius: `${dimensions.borderRadius * 0.75}px`,
+                                    border: `1px solid ${colors.borderColor}`,
+                                }}
+                            >
+                                <label
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: `${dimensions.gap * 0.75}px`,
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        name="termsAccepted"
+                                        checked={
+                                            customerInfo.termsAccepted || false
+                                        }
+                                        onChange={(e) =>
+                                            updateFormField(
+                                                "termsAccepted",
+                                                e.target.checked
+                                            )
+                                        }
+                                        style={{
+                                            width: "16px",
+                                            height: "16px",
+                                            cursor: "pointer",
+                                        }}
+                                        required
+                                    />
+                                    <span
+                                        style={{
+                                            fontSize: `${typography.smallTextFontSize}px`,
+                                        }}
+                                    >
+                                        {textsForm.termsText}{" "}
+                                        <a
+                                            href={urlsConfig.termsUrl}
+                                            style={{
+                                                color: colors.primaryColor,
+                                                textDecoration: "underline",
+                                                cursor: "pointer",
+                                            }}
+                                        >
+                                            {textsForm.termsLinkText}
+                                        </a>{" "}
+                                        *
+                                    </span>
+                                </label>
+                            </div>
+
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    gap: `${dimensions.gap}px`,
+                                    marginTop: `${dimensions.gap * 1.5}px`,
+                                }}
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowBookingForm(false)
+                                        setShowTimeSelection(true)
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        padding: `${dimensions.buttonPadding}px`,
+                                        backgroundColor: colors.secondaryColor,
+                                        color: colors.textColor,
+                                        borderRadius: `${dimensions.borderRadius * 0.75}px`,
+                                        fontWeight: "600",
+                                        border: "none",
+                                        cursor: "pointer",
+                                        transition: `all ${style.animationSpeed}ms ease`,
+                                        fontSize: `${typography.buttonFontSize}px`,
+                                        fontFamily: typography.fontFamily,
+                                    }}
+                                    disabled={isBooking}
+                                >
+                                    {textsForm.backButtonText}
+                                </button>
+                                <button
+                                    type="submit"
+                                    style={{
+                                        flex: 2,
+                                        padding: `${dimensions.buttonPadding}px`,
+                                        backgroundColor: colors.primaryColor,
+                                        color: "white",
+                                        borderRadius: `${dimensions.borderRadius * 0.75}px`,
+                                        fontWeight: "600",
+                                        border: "none",
+                                        cursor: isBooking
+                                            ? "default"
+                                            : "pointer",
+                                        transition: `all ${style.animationSpeed}ms ease`,
+                                        fontSize: `${typography.buttonFontSize}px`,
+                                        fontFamily: typography.fontFamily,
+                                        opacity: isBooking ? 0.7 : 1,
+                                    }}
+                                    disabled={isBooking}
+                                >
+                                    {isBooking
+                                        ? textsForm.bookingLoadingText
+                                        : textsForm.bookButtonText}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de succès */}
+            {bookingSuccess && (
+                <div
+                    style={{
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: "rgba(0, 0, 0, 0.5)",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        zIndex: 1000,
+                        padding: `${dimensions.gap}px`,
+                    }}
+                >
+                    <div
+                        style={{
+                            backgroundColor: colors.backgroundColor,
+                            borderRadius: `${dimensions.borderRadius}px`,
+                            padding: `${dimensions.padding}px`,
+                            width: "100%",
+                            maxWidth: "500px",
+                            maxHeight: "90vh",
+                            overflowY: "auto",
+                            boxShadow: "0 25px 50px rgba(0, 0, 0, 0.25)",
+                        }}
+                    >
+                        <h3
+                            style={{
+                                fontSize: `${typography.titleFontSize * 0.8}px`,
+                                fontWeight: "700",
+                                textAlign: "center",
+                                marginBottom: `${dimensions.gap}px`,
+                                margin: `0 0 ${dimensions.gap}px 0`,
+                                color: colors.successColor,
+                            }}
+                        >
+                            🎉 {textsSuccess.successTitle}
+                        </h3>
+
+                        <div
+                            style={{
+                                marginBottom: `${dimensions.gap * 1.5}px`,
+                            }}
+                        >
+                            <div
+                                style={{
+                                    padding: `${dimensions.gap}px`,
+                                    backgroundColor: `${colors.successColor}20`,
+                                    borderRadius: `${dimensions.borderRadius * 0.75}px`,
+                                    border: `1px solid ${colors.successColor}40`,
+                                    marginBottom: `${dimensions.gap}px`,
+                                }}
+                            >
+                                <p
+                                    style={{
+                                        margin: "0",
+                                        marginBottom: `${dimensions.gap * 0.5}px`,
+                                    }}
+                                >
+                                    <strong>
+                                        {textsSuccess.successBookingIdLabel}
+                                    </strong>{" "}
+                                    {bookingSuccess.bookingId}
+                                </p>
+                                <p
+                                    style={{
+                                        margin: "0",
+                                        marginBottom: `${dimensions.gap * 0.5}px`,
+                                    }}
+                                >
+                                    <strong>
+                                        {textsSuccess.successStatusLabel}
+                                    </strong>
+                                    <span
+                                        style={{
+                                            fontWeight: "600",
+                                            marginLeft: "8px",
+                                            color: colors.successColor,
+                                        }}
+                                    >
+                                        {bookingSuccess.status} ✅
+                                    </span>
+                                </p>
+                                <p
+                                    style={{
+                                        margin: "0",
+                                        marginBottom: `${dimensions.gap * 0.5}px`,
+                                    }}
+                                >
+                                    <strong>
+                                        {textsSuccess.successMethodLabel}
+                                    </strong>
+                                    <span
+                                        style={{
+                                            fontWeight: "600",
+                                            marginLeft: "8px",
+                                            color: colors.primaryColor,
+                                        }}
+                                    >
+                                        {bookingSuccess.paymentMethod ===
+                                            "bookla-integrated" &&
+                                            "🎯 Bookla Intégré (Dynamique)"}
+                                        {bookingSuccess.paymentMethod ===
+                                            "manual" && "📧 Manuel"}
+                                    </span>
+                                </p>
+                                <p
+                                    style={{
+                                        margin: "0",
+                                        marginBottom: `${dimensions.gap * 0.5}px`,
+                                    }}
+                                >
+                                    <strong>
+                                        {textsSuccess.successServiceLabel}
+                                    </strong>{" "}
+                                    {
+                                        getEnabledServices.find(
+                                            (s) => s.id === selectedServiceId
+                                        )?.name
+                                    }
+                                </p>
+                                <p
+                                    style={{
+                                        margin: "0",
+                                        marginBottom: `${dimensions.gap * 0.5}px`,
+                                    }}
+                                >
+                                    <strong>
+                                        {textsSuccess.successDateLabel}
+                                    </strong>{" "}
+                                    {selectedDate}
+                                </p>
+                                <p
+                                    style={{
+                                        margin: "0",
+                                        marginBottom: `${dimensions.gap * 0.5}px`,
+                                    }}
+                                >
+                                    <strong>
+                                        {textsSuccess.successTimeLabel}
+                                    </strong>{" "}
+                                    {selectedTimeSlot &&
+                                        formatTimeString(
+                                            selectedTimeSlot.startTime
+                                        )}
+                                </p>
+                                <p style={{ margin: "0" }}>
+                                    <strong>
+                                        {textsSuccess.successTotalLabel}
+                                    </strong>{" "}
+                                    {(getEnabledServices.find(
+                                        (s) => s.id === selectedServiceId
+                                    )?.basePrice || 0) +
+                                        (getEnabledServices.find(
+                                            (s) => s.id === selectedServiceId
+                                        )?.apaPrice || 0)}
+                                    €
+                                </p>
+                            </div>
+
+                            {bookingSuccess.paymentUrl ? (
+                                <div
+                                    style={{
+                                        padding: `${dimensions.gap}px`,
+                                        backgroundColor: `${colors.primaryColor}20`,
+                                        borderRadius: `${dimensions.borderRadius * 0.75}px`,
+                                        border: `1px solid ${colors.primaryColor}40`,
+                                    }}
+                                >
+                                    <p
+                                        style={{
+                                            color: colors.primaryColor,
+                                            fontWeight: "600",
+                                            marginBottom: `${dimensions.gap * 0.5}px`,
+                                            margin: `0 0 ${dimensions.gap * 0.5}px 0`,
+                                        }}
+                                    >
+                                        🔗 {textsSuccess.paymentRedirectText}
+                                    </p>
+                                    <p
+                                        style={{
+                                            fontSize: `${typography.smallTextFontSize}px`,
+                                            color: colors.primaryColor,
+                                            marginBottom: `${dimensions.gap * 0.75}px`,
+                                            margin: `0 0 ${dimensions.gap * 0.75}px 0`,
+                                        }}
+                                    >
+                                        {textsSuccess.paymentRedirectSubtext}
+                                    </p>
+                                    <button
+                                        onClick={() =>
+                                            window.open(
+                                                bookingSuccess.paymentUrl,
+                                                "_blank"
+                                            )
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            backgroundColor:
+                                                colors.primaryColor,
+                                            color: "white",
+                                            padding: `${dimensions.buttonPadding}px`,
+                                            borderRadius: `${dimensions.borderRadius * 0.75}px`,
+                                            border: "none",
+                                            cursor: "pointer",
+                                            transition: `all ${style.animationSpeed}ms ease`,
+                                            fontWeight: "600",
+                                            fontSize: `${typography.buttonFontSize}px`,
+                                            fontFamily: typography.fontFamily,
+                                        }}
+                                    >
+                                        🚀 {textsSuccess.paymentButtonText}
+                                    </button>
+                                </div>
+                            ) : (
+                                <div
+                                    style={{
+                                        padding: `${dimensions.gap}px`,
+                                        backgroundColor: "#fef3c7",
+                                        borderRadius: `${dimensions.borderRadius * 0.75}px`,
+                                        border: "1px solid #f59e0b",
+                                    }}
+                                >
+                                    <p
+                                        style={{
+                                            color: "#92400e",
+                                            fontWeight: "600",
+                                            marginBottom: `${dimensions.gap * 0.5}px`,
+                                            margin: `0 0 ${dimensions.gap * 0.5}px 0`,
+                                        }}
+                                    >
+                                        ⚠️ {textsSuccess.manualPaymentTitle}
+                                    </p>
+                                    <p
+                                        style={{
+                                            fontSize: `${typography.smallTextFontSize}px`,
+                                            color: "#92400e",
+                                            margin: "0",
+                                        }}
+                                    >
+                                        {textsSuccess.manualPaymentText}
+                                        <br />
+                                        Contactez-nous pour finaliser le
+                                        paiement.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                setBookingSuccess(null)
+                                window.location.reload()
+                            }}
+                            style={{
+                                width: "100%",
+                                backgroundColor: "#6b7280",
+                                color: "white",
+                                padding: `${dimensions.buttonPadding}px`,
+                                borderRadius: `${dimensions.borderRadius * 0.75}px`,
+                                border: "none",
+                                cursor: "pointer",
+                                transition: `all ${style.animationSpeed}ms ease`,
+                                fontWeight: "600",
+                                fontSize: `${typography.buttonFontSize}px`,
+                                fontFamily: typography.fontFamily,
+                            }}
+                        >
+                            {textsSuccess.closeButtonText}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
 
-// Contrôles Framer avec VRAIES SOUS-CATÉGORIES
-addPropertyControls(BooklaCalendarFramerTrueGroups, {
+// Contrôles Framer avec Services et Formulaire DYNAMIQUES
+addPropertyControls(BooklaCalendarFramerDynamic, {
     booklaConfig: {
         type: ControlType.Object,
         title: "🔧 Configuration Bookla",
@@ -1263,14 +2139,28 @@ addPropertyControls(BooklaCalendarFramerTrueGroups, {
         },
     },
 
-    services: {
+    servicesConfig: {
         type: ControlType.Object,
-        title: "🚢 Services",
+        title: "🚢 Services Dynamiques",
         controls: {
+            numberOfServices: {
+                type: ControlType.Number,
+                title: "Nombre de services",
+                defaultValue: 3,
+                min: 1,
+                max: 5,
+                step: 1,
+                displayStepper: true,
+            },
             service1: {
                 type: ControlType.Object,
                 title: "Service 1",
                 controls: {
+                    enabled: {
+                        type: ControlType.Boolean,
+                        title: "Activé",
+                        defaultValue: true,
+                    },
                     name: {
                         type: ControlType.String,
                         title: "Nom",
@@ -1297,12 +2187,22 @@ addPropertyControls(BooklaCalendarFramerTrueGroups, {
                         title: "ID Bookla",
                         defaultValue: "e7c09d8e-e012-4b82-8b31-d584fa4be8ae",
                     },
+                    description: {
+                        type: ControlType.String,
+                        title: "Description",
+                        defaultValue: "Service complet pour une journée en mer",
+                    },
                 },
             },
             service2: {
                 type: ControlType.Object,
                 title: "Service 2",
                 controls: {
+                    enabled: {
+                        type: ControlType.Boolean,
+                        title: "Activé",
+                        defaultValue: true,
+                    },
                     name: {
                         type: ControlType.String,
                         title: "Nom",
@@ -1329,12 +2229,23 @@ addPropertyControls(BooklaCalendarFramerTrueGroups, {
                         title: "ID Bookla",
                         defaultValue: "1b994905-1980-4c7d-813a-66fcb8d88f92",
                     },
+                    description: {
+                        type: ControlType.String,
+                        title: "Description",
+                        defaultValue:
+                            "Escapade romantique au coucher du soleil",
+                    },
                 },
             },
             service3: {
                 type: ControlType.Object,
                 title: "Service 3",
                 controls: {
+                    enabled: {
+                        type: ControlType.Boolean,
+                        title: "Activé",
+                        defaultValue: true,
+                    },
                     name: {
                         type: ControlType.String,
                         title: "Nom",
@@ -1360,6 +2271,398 @@ addPropertyControls(BooklaCalendarFramerTrueGroups, {
                         type: ControlType.String,
                         title: "ID Bookla",
                         defaultValue: "7c3ca43d-37b4-483e-b3f6-39e8aed4afe9",
+                    },
+                    description: {
+                        type: ControlType.String,
+                        title: "Description",
+                        defaultValue: "Expérience mixte personnalisée",
+                    },
+                },
+            },
+            service4: {
+                type: ControlType.Object,
+                title: "Service 4",
+                controls: {
+                    enabled: {
+                        type: ControlType.Boolean,
+                        title: "Activé",
+                        defaultValue: false,
+                    },
+                    name: {
+                        type: ControlType.String,
+                        title: "Nom",
+                        defaultValue: "Service Premium",
+                    },
+                    price: {
+                        type: ControlType.Number,
+                        title: "Prix",
+                        defaultValue: 500,
+                        min: 0,
+                        max: 10000,
+                        step: 10,
+                    },
+                    apaPrice: {
+                        type: ControlType.Number,
+                        title: "APA",
+                        defaultValue: 200,
+                        min: 0,
+                        max: 5000,
+                        step: 10,
+                    },
+                    booklaId: {
+                        type: ControlType.String,
+                        title: "ID Bookla",
+                        defaultValue: "",
+                    },
+                    description: {
+                        type: ControlType.String,
+                        title: "Description",
+                        defaultValue: "Service premium avec extras",
+                    },
+                },
+            },
+            service5: {
+                type: ControlType.Object,
+                title: "Service 5",
+                controls: {
+                    enabled: {
+                        type: ControlType.Boolean,
+                        title: "Activé",
+                        defaultValue: false,
+                    },
+                    name: {
+                        type: ControlType.String,
+                        title: "Nom",
+                        defaultValue: "Service Express",
+                    },
+                    price: {
+                        type: ControlType.Number,
+                        title: "Prix",
+                        defaultValue: 150,
+                        min: 0,
+                        max: 10000,
+                        step: 10,
+                    },
+                    apaPrice: {
+                        type: ControlType.Number,
+                        title: "APA",
+                        defaultValue: 30,
+                        min: 0,
+                        max: 5000,
+                        step: 10,
+                    },
+                    booklaId: {
+                        type: ControlType.String,
+                        title: "ID Bookla",
+                        defaultValue: "",
+                    },
+                    description: {
+                        type: ControlType.String,
+                        title: "Description",
+                        defaultValue: "Service rapide 2h",
+                    },
+                },
+            },
+        },
+    },
+
+    formConfig: {
+        type: ControlType.Object,
+        title: "📝 Formulaire Dynamique",
+        controls: {
+            fields: {
+                type: ControlType.Object,
+                title: "Champs Standards",
+                controls: {
+                    firstName: {
+                        type: ControlType.Object,
+                        title: "Prénom",
+                        controls: {
+                            enabled: {
+                                type: ControlType.Boolean,
+                                title: "Activé",
+                                defaultValue: true,
+                            },
+                            required: {
+                                type: ControlType.Boolean,
+                                title: "Obligatoire",
+                                defaultValue: true,
+                            },
+                            label: {
+                                type: ControlType.String,
+                                title: "Label",
+                                defaultValue: "Prénom",
+                            },
+                            placeholder: {
+                                type: ControlType.String,
+                                title: "Placeholder",
+                                defaultValue: "Votre prénom",
+                            },
+                        },
+                    },
+                    lastName: {
+                        type: ControlType.Object,
+                        title: "Nom",
+                        controls: {
+                            enabled: {
+                                type: ControlType.Boolean,
+                                title: "Activé",
+                                defaultValue: true,
+                            },
+                            required: {
+                                type: ControlType.Boolean,
+                                title: "Obligatoire",
+                                defaultValue: true,
+                            },
+                            label: {
+                                type: ControlType.String,
+                                title: "Label",
+                                defaultValue: "Nom",
+                            },
+                            placeholder: {
+                                type: ControlType.String,
+                                title: "Placeholder",
+                                defaultValue: "Votre nom",
+                            },
+                        },
+                    },
+                    email: {
+                        type: ControlType.Object,
+                        title: "Email",
+                        controls: {
+                            enabled: {
+                                type: ControlType.Boolean,
+                                title: "Activé",
+                                defaultValue: true,
+                            },
+                            required: {
+                                type: ControlType.Boolean,
+                                title: "Obligatoire",
+                                defaultValue: true,
+                            },
+                            label: {
+                                type: ControlType.String,
+                                title: "Label",
+                                defaultValue: "Email",
+                            },
+                            placeholder: {
+                                type: ControlType.String,
+                                title: "Placeholder",
+                                defaultValue: "votre@email.com",
+                            },
+                        },
+                    },
+                    phone: {
+                        type: ControlType.Object,
+                        title: "Téléphone",
+                        controls: {
+                            enabled: {
+                                type: ControlType.Boolean,
+                                title: "Activé",
+                                defaultValue: true,
+                            },
+                            required: {
+                                type: ControlType.Boolean,
+                                title: "Obligatoire",
+                                defaultValue: true,
+                            },
+                            label: {
+                                type: ControlType.String,
+                                title: "Label",
+                                defaultValue: "Téléphone",
+                            },
+                            placeholder: {
+                                type: ControlType.String,
+                                title: "Placeholder",
+                                defaultValue: "+33 6 12 34 56 78",
+                            },
+                        },
+                    },
+                    company: {
+                        type: ControlType.Object,
+                        title: "Entreprise",
+                        controls: {
+                            enabled: {
+                                type: ControlType.Boolean,
+                                title: "Activé",
+                                defaultValue: false,
+                            },
+                            required: {
+                                type: ControlType.Boolean,
+                                title: "Obligatoire",
+                                defaultValue: false,
+                            },
+                            label: {
+                                type: ControlType.String,
+                                title: "Label",
+                                defaultValue: "Entreprise",
+                            },
+                            placeholder: {
+                                type: ControlType.String,
+                                title: "Placeholder",
+                                defaultValue: "Nom de votre entreprise",
+                            },
+                        },
+                    },
+                    address: {
+                        type: ControlType.Object,
+                        title: "Adresse",
+                        controls: {
+                            enabled: {
+                                type: ControlType.Boolean,
+                                title: "Activé",
+                                defaultValue: false,
+                            },
+                            required: {
+                                type: ControlType.Boolean,
+                                title: "Obligatoire",
+                                defaultValue: false,
+                            },
+                            label: {
+                                type: ControlType.String,
+                                title: "Label",
+                                defaultValue: "Adresse",
+                            },
+                            placeholder: {
+                                type: ControlType.String,
+                                title: "Placeholder",
+                                defaultValue: "Votre adresse",
+                            },
+                        },
+                    },
+                    specialRequests: {
+                        type: ControlType.Object,
+                        title: "Demandes spéciales",
+                        controls: {
+                            enabled: {
+                                type: ControlType.Boolean,
+                                title: "Activé",
+                                defaultValue: false,
+                            },
+                            required: {
+                                type: ControlType.Boolean,
+                                title: "Obligatoire",
+                                defaultValue: false,
+                            },
+                            label: {
+                                type: ControlType.String,
+                                title: "Label",
+                                defaultValue: "Demandes spéciales",
+                            },
+                            placeholder: {
+                                type: ControlType.String,
+                                title: "Placeholder",
+                                defaultValue: "Vos demandes particulières...",
+                            },
+                        },
+                    },
+                    numberOfPeople: {
+                        type: ControlType.Object,
+                        title: "Nombre de personnes",
+                        controls: {
+                            enabled: {
+                                type: ControlType.Boolean,
+                                title: "Activé",
+                                defaultValue: false,
+                            },
+                            required: {
+                                type: ControlType.Boolean,
+                                title: "Obligatoire",
+                                defaultValue: false,
+                            },
+                            label: {
+                                type: ControlType.String,
+                                title: "Label",
+                                defaultValue: "Nombre de personnes",
+                            },
+                            placeholder: {
+                                type: ControlType.String,
+                                title: "Placeholder",
+                                defaultValue: "Ex: 4",
+                            },
+                        },
+                    },
+                },
+            },
+            customFields: {
+                type: ControlType.Object,
+                title: "Champs Personnalisés",
+                controls: {
+                    field1: {
+                        type: ControlType.Object,
+                        title: "Champ personnalisé 1",
+                        controls: {
+                            enabled: {
+                                type: ControlType.Boolean,
+                                title: "Activé",
+                                defaultValue: false,
+                            },
+                            required: {
+                                type: ControlType.Boolean,
+                                title: "Obligatoire",
+                                defaultValue: false,
+                            },
+                            label: {
+                                type: ControlType.String,
+                                title: "Label",
+                                defaultValue: "Champ personnalisé 1",
+                            },
+                            placeholder: {
+                                type: ControlType.String,
+                                title: "Placeholder",
+                                defaultValue: "Valeur personnalisée",
+                            },
+                            type: {
+                                type: ControlType.Enum,
+                                title: "Type",
+                                defaultValue: "text",
+                                options: ["text", "email", "tel", "textarea"],
+                                optionTitles: [
+                                    "Texte",
+                                    "Email",
+                                    "Téléphone",
+                                    "Zone de texte",
+                                ],
+                            },
+                        },
+                    },
+                    field2: {
+                        type: ControlType.Object,
+                        title: "Champ personnalisé 2",
+                        controls: {
+                            enabled: {
+                                type: ControlType.Boolean,
+                                title: "Activé",
+                                defaultValue: false,
+                            },
+                            required: {
+                                type: ControlType.Boolean,
+                                title: "Obligatoire",
+                                defaultValue: false,
+                            },
+                            label: {
+                                type: ControlType.String,
+                                title: "Label",
+                                defaultValue: "Champ personnalisé 2",
+                            },
+                            placeholder: {
+                                type: ControlType.String,
+                                title: "Placeholder",
+                                defaultValue: "Autre valeur",
+                            },
+                            type: {
+                                type: ControlType.Enum,
+                                title: "Type",
+                                defaultValue: "text",
+                                options: ["text", "email", "tel", "textarea"],
+                                optionTitles: [
+                                    "Texte",
+                                    "Email",
+                                    "Téléphone",
+                                    "Zone de texte",
+                                ],
+                            },
+                        },
                     },
                 },
             },
@@ -1460,26 +2763,6 @@ addPropertyControls(BooklaCalendarFramerTrueGroups, {
                 title: "Titre formulaire",
                 defaultValue: "Réservation",
             },
-            firstNameLabel: {
-                type: ControlType.String,
-                title: "Label prénom",
-                defaultValue: "Prénom",
-            },
-            lastNameLabel: {
-                type: ControlType.String,
-                title: "Label nom",
-                defaultValue: "Nom",
-            },
-            emailLabel: {
-                type: ControlType.String,
-                title: "Label email",
-                defaultValue: "Email",
-            },
-            phoneLabel: {
-                type: ControlType.String,
-                title: "Label téléphone",
-                defaultValue: "Téléphone",
-            },
             summaryTitle: {
                 type: ControlType.String,
                 title: "Titre récapitulatif",
@@ -1514,6 +2797,11 @@ addPropertyControls(BooklaCalendarFramerTrueGroups, {
                 type: ControlType.String,
                 title: "Chargement",
                 defaultValue: "Création en cours...",
+            },
+            requiredFieldsText: {
+                type: ControlType.String,
+                title: "Note champs obligatoires",
+                defaultValue: "Les champs marqués d'un * sont obligatoires",
             },
         },
     },
