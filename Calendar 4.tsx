@@ -20,9 +20,10 @@ import { addPropertyControls, ControlType } from "framer"
  * - Auto-hide service selection when only one service
  * - Multi-language support (months and weekdays)
  * - Flexible width that adapts to container
+ * - Flexible APA price display options
  *
  * Author: Created for Loupinedou Yacht
- * Version: 1.4 - Fixed Date Bugs (Past Date Logic & Display Timezone)
+ * Version: 1.5 - Flexible APA Price Display
  */
 
 /**
@@ -544,8 +545,65 @@ export default function BooklaCalendarFramerComplete(props: any) {
             showDuration: true,
             hideServiceSelectionWhenSingle: true, // Hide service selection when only one service
             debugMode: false, // Enable debug logging to console
+            // NEW: APA Price Display Options
+            showAPA: true, // Show or hide APA prices completely
+            showPriceBreakdown: true, // Show detailed breakdown (base + APA = total) vs just total
         },
     } = props
+
+    /**
+     * NEW: PRICE DISPLAY LOGIC
+     * Intelligent pricing display based on configuration
+     */
+    const getPriceDisplay = (service: ServiceConfig) => {
+        if (!features.showPrices) return null
+
+        const hasAPA = features.showAPA && service.apaPrice > 0
+        const basePrice = service.basePrice
+        const apaPrice = service.apaPrice
+        const totalPrice = basePrice + apaPrice
+
+        // Case 1: APA hidden or zero - show only base price or total
+        if (!hasAPA) {
+            return {
+                simple: `${basePrice}€`,
+                total: `${basePrice}€`,
+            }
+        }
+
+        // Case 2: APA shown with breakdown
+        if (features.showPriceBreakdown) {
+            return {
+                breakdown: (
+                    <>
+                        <div>
+                            <span>Price: </span>
+                            <span style={{ fontWeight: "600" }}>
+                                {basePrice}€ + {apaPrice}€ APA
+                            </span>
+                        </div>
+                        <div
+                            style={{
+                                fontSize: `${theme.fontSize * 1.25}px`,
+                                fontWeight: "700",
+                                color: theme.primaryColor,
+                                marginTop: "8px",
+                            }}
+                        >
+                            Total: {totalPrice}€
+                        </div>
+                    </>
+                ),
+                total: `${totalPrice}€`,
+            }
+        }
+
+        // Case 3: APA shown but no breakdown - just total
+        return {
+            simple: `${totalPrice}€`,
+            total: `${totalPrice}€`,
+        }
+    }
 
     /**
      * LANGUAGE HANDLING LOGIC
@@ -1483,7 +1541,7 @@ export default function BooklaCalendarFramerComplete(props: any) {
                         ))}
                     </select>
 
-                    {/* Service Details Display - Only show if there's content */}
+                    {/* NEW: Service Details Display with Flexible Price Display */}
                     {getCurrentService() &&
                         (features.showDescriptions ||
                             features.showDuration ||
@@ -1529,32 +1587,30 @@ export default function BooklaCalendarFramerComplete(props: any) {
                                         </div>
                                     )}
 
-                                {features.showPrices && (
-                                    <>
-                                        <div>
-                                            <span>Price: </span>
-                                            <span style={{ fontWeight: "600" }}>
-                                                {getCurrentService()!.basePrice}
-                                                € +{" "}
-                                                {getCurrentService()!.apaPrice}€
-                                                APA
-                                            </span>
-                                        </div>
-                                        <div
-                                            style={{
-                                                fontSize: `${theme.fontSize * 1.25}px`,
-                                                fontWeight: "700",
-                                                color: theme.primaryColor,
-                                                marginTop: "8px",
-                                            }}
-                                        >
-                                            Total:{" "}
-                                            {getCurrentService()!.basePrice +
-                                                getCurrentService()!.apaPrice}
-                                            €
-                                        </div>
-                                    </>
-                                )}
+                                {/* NEW: Flexible Price Display */}
+                                {features.showPrices &&
+                                    (() => {
+                                        const priceDisplay = getPriceDisplay(
+                                            getCurrentService()!
+                                        )
+                                        if (priceDisplay?.breakdown) {
+                                            return priceDisplay.breakdown
+                                        } else if (priceDisplay?.simple) {
+                                            return (
+                                                <div
+                                                    style={{
+                                                        fontSize: `${theme.fontSize * 1.25}px`,
+                                                        fontWeight: "700",
+                                                        color: theme.primaryColor,
+                                                        marginTop: "8px",
+                                                    }}
+                                                >
+                                                    Price: {priceDisplay.simple}
+                                                </div>
+                                            )
+                                        }
+                                        return null
+                                    })()}
                             </div>
                         )}
                 </div>
@@ -1626,32 +1682,30 @@ export default function BooklaCalendarFramerComplete(props: any) {
                                         </div>
                                     )}
 
-                                {features.showPrices && (
-                                    <>
-                                        <div>
-                                            <span>Price: </span>
-                                            <span style={{ fontWeight: "600" }}>
-                                                {getCurrentService()!.basePrice}
-                                                € +{" "}
-                                                {getCurrentService()!.apaPrice}€
-                                                APA
-                                            </span>
-                                        </div>
-                                        <div
-                                            style={{
-                                                fontSize: `${theme.fontSize * 1.25}px`,
-                                                fontWeight: "700",
-                                                color: theme.primaryColor,
-                                                marginTop: "8px",
-                                            }}
-                                        >
-                                            Total:{" "}
-                                            {getCurrentService()!.basePrice +
-                                                getCurrentService()!.apaPrice}
-                                            €
-                                        </div>
-                                    </>
-                                )}
+                                {/* NEW: Flexible Price Display for Single Service */}
+                                {features.showPrices &&
+                                    (() => {
+                                        const priceDisplay = getPriceDisplay(
+                                            getCurrentService()!
+                                        )
+                                        if (priceDisplay?.breakdown) {
+                                            return priceDisplay.breakdown
+                                        } else if (priceDisplay?.simple) {
+                                            return (
+                                                <div
+                                                    style={{
+                                                        fontSize: `${theme.fontSize * 1.25}px`,
+                                                        fontWeight: "700",
+                                                        color: theme.primaryColor,
+                                                        marginTop: "8px",
+                                                    }}
+                                                >
+                                                    Price: {priceDisplay.simple}
+                                                </div>
+                                            )
+                                        }
+                                        return null
+                                    })()}
                             </div>
                         ) : null}
                     </div>
@@ -2564,6 +2618,7 @@ export default function BooklaCalendarFramerComplete(props: any) {
  * - Service selection visibility control
  * - Multi-language support for calendar
  * - Flexible width with maximum width setting
+ * - NEW: Flexible APA price display options
  */
 
 addPropertyControls(BooklaCalendarFramerComplete, {
@@ -3765,6 +3820,21 @@ addPropertyControls(BooklaCalendarFramerComplete, {
                 defaultValue: true,
                 description:
                     "Automatically hide service dropdown when only one service is active",
+            },
+            // NEW: APA Price Display Options
+            showAPA: {
+                type: ControlType.Boolean,
+                title: "Show APA Prices",
+                defaultValue: true,
+                description:
+                    "Display APA prices (useful for different business models)",
+            },
+            showPriceBreakdown: {
+                type: ControlType.Boolean,
+                title: "Show Price Breakdown",
+                defaultValue: true,
+                description:
+                    "Show detailed breakdown (Base + APA = Total) vs just total price",
             },
             debugMode: {
                 type: ControlType.Boolean,
