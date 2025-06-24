@@ -16,35 +16,177 @@ import { addPropertyControls, ControlType } from "framer"
  * - Complete styling control
  * - Responsive layout with configurable spacing
  * - Client API priority with Merchant API fallback
+ * - Configurable calendar cell padding
+ * - Auto-hide service selection when only one service
+ * - Multi-language support (months and weekdays)
+ * - Flexible width that adapts to container
  *
  * Author: Created for Loupinedou Yacht
- * Version: 1.0 Complete
+ * Version: 1.4 - Fixed Date Bugs (Past Date Logic & Display Timezone)
  */
-
-// Calendar constants for French localization
-const MONTHS = [
-    "Janvier",
-    "Février",
-    "Mars",
-    "Avril",
-    "Mai",
-    "Juin",
-    "Juillet",
-    "Août",
-    "Septembre",
-    "Octobre",
-    "Novembre",
-    "Décembre",
-]
-const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
 
 /**
- * Utility function to format date to ISO string
+ * Multi-language support
+ * Available languages with their months and weekdays
+ */
+const LANGUAGE_DATA = {
+    french: {
+        months: [
+            "Janvier",
+            "Février",
+            "Mars",
+            "Avril",
+            "Mai",
+            "Juin",
+            "Juillet",
+            "Août",
+            "Septembre",
+            "Octobre",
+            "Novembre",
+            "Décembre",
+        ],
+        weekdays: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"],
+        today: "Aujourd'hui",
+    },
+    english: {
+        months: [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ],
+        weekdays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        today: "Today",
+    },
+    spanish: {
+        months: [
+            "Enero",
+            "Febrero",
+            "Marzo",
+            "Abril",
+            "Mayo",
+            "Junio",
+            "Julio",
+            "Agosto",
+            "Septiembre",
+            "Octubre",
+            "Noviembre",
+            "Diciembre",
+        ],
+        weekdays: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
+        today: "Hoy",
+    },
+    german: {
+        months: [
+            "Januar",
+            "Februar",
+            "März",
+            "April",
+            "Mai",
+            "Juni",
+            "Juli",
+            "August",
+            "September",
+            "Oktober",
+            "November",
+            "Dezember",
+        ],
+        weekdays: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+        today: "Heute",
+    },
+    italian: {
+        months: [
+            "Gennaio",
+            "Febbraio",
+            "Marzo",
+            "Aprile",
+            "Maggio",
+            "Giugno",
+            "Luglio",
+            "Agosto",
+            "Settembre",
+            "Ottobre",
+            "Novembre",
+            "Dicembre",
+        ],
+        weekdays: ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"],
+        today: "Oggi",
+    },
+    portuguese: {
+        months: [
+            "Janeiro",
+            "Fevereiro",
+            "Março",
+            "Abril",
+            "Maio",
+            "Junho",
+            "Julho",
+            "Agosto",
+            "Setembro",
+            "Outubro",
+            "Novembro",
+            "Dezembro",
+        ],
+        weekdays: ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"],
+        today: "Hoje",
+    },
+    dutch: {
+        months: [
+            "Januari",
+            "Februari",
+            "Maart",
+            "April",
+            "Mei",
+            "Juni",
+            "Juli",
+            "Augustus",
+            "September",
+            "Oktober",
+            "November",
+            "December",
+        ],
+        weekdays: ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"],
+        today: "Vandaag",
+    },
+}
+
+/**
+ * FIXED: Utility function to format date to ISO string without timezone issues
+ * This prevents the UTC conversion that was causing the "previous day" bug
  * @param date - JavaScript Date object
- * @returns ISO date string (YYYY-MM-DD format)
+ * @returns ISO date string (YYYY-MM-DD format) in local timezone
  */
 function formatDateString(date: Date): string {
-    return date.toISOString().split("T")[0]
+    // FIXED: Use local timezone instead of UTC to prevent day shifting
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+}
+
+/**
+ * FIXED: Utility function to format date for display in modals
+ * @param dateString - ISO date string (YYYY-MM-DD)
+ * @returns Formatted date string for display
+ */
+function formatDateForDisplay(dateString: string): string {
+    // FIXED: Parse date string properly to avoid timezone shifts
+    const [year, month, day] = dateString.split("-").map(Number)
+    const date = new Date(year, month - 1, day) // month is 0-indexed
+    return date.toLocaleDateString("fr-FR", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    })
 }
 
 /**
@@ -59,6 +201,43 @@ function formatTimeString(dateTimeString: string): string {
         minute: "2-digit",
         hour12: false,
     })
+}
+
+/**
+ * FIXED: Utility function to check if a date is in the past
+ * This fixes the bug where available dates were marked as blocked
+ * @param date - Date to check
+ * @returns true if date is in the past (before today)
+ */
+function isDateInPast(date: Date): boolean {
+    // FIXED: Compare only the date part, ignoring time
+    const today = new Date()
+    const todayDateOnly = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+    )
+    const checkDateOnly = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate()
+    )
+
+    return checkDateOnly < todayDateOnly
+}
+
+/**
+ * FIXED: Utility function to check if a date is today
+ * @param date - Date to check
+ * @returns true if date is today
+ */
+function isToday(date: Date): boolean {
+    const today = new Date()
+    return (
+        date.getFullYear() === today.getFullYear() &&
+        date.getMonth() === today.getMonth() &&
+        date.getDate() === today.getDate()
+    )
 }
 
 /**
@@ -114,6 +293,14 @@ export default function BooklaCalendarFramerComplete(props: any) {
             apiKey: "teVkXn9d17cKZknCZopXDsEPz8SHs2Mf3E7r",
             baseUrl: "https://us.bookla.com",
             resourceId: "8f653843-ae64-4d1a-9701-3a1ab12d133c",
+        },
+
+        // Language Configuration - Multi-language support
+        language = {
+            calendar: "french",
+            customMonths: [],
+            customWeekdays: [],
+            customTodayButton: "",
         },
 
         // Text Configuration - All displayed texts are customizable
@@ -339,12 +526,13 @@ export default function BooklaCalendarFramerComplete(props: any) {
 
         // Layout Configuration - Spacing and dimensions
         layout = {
-            width: 800,
+            maxWidth: 800, // Maximum width - component will be smaller if container is smaller
             height: 900,
             containerPadding: 32,
             sectionSpacing: 32,
             elementSpacing: 16,
             calendarGap: 8,
+            calendarCellPadding: 8, // Configurable padding for calendar cells
             modalPadding: 32,
             enableScroll: true, // Enable scrolling when content overflows
         },
@@ -354,9 +542,40 @@ export default function BooklaCalendarFramerComplete(props: any) {
             showPrices: true,
             showDescriptions: true,
             showDuration: true,
+            hideServiceSelectionWhenSingle: true, // Hide service selection when only one service
             debugMode: false, // Enable debug logging to console
         },
     } = props
+
+    /**
+     * LANGUAGE HANDLING LOGIC
+     * Get months and weekdays based on language configuration
+     */
+    const getLanguageData = () => {
+        // Use custom arrays if provided, otherwise use predefined language
+        const MONTHS =
+            language.customMonths && language.customMonths.length === 12
+                ? language.customMonths
+                : LANGUAGE_DATA[language.calendar as keyof typeof LANGUAGE_DATA]
+                      ?.months || LANGUAGE_DATA.french.months
+
+        const WEEKDAYS =
+            language.customWeekdays && language.customWeekdays.length === 7
+                ? language.customWeekdays
+                : LANGUAGE_DATA[language.calendar as keyof typeof LANGUAGE_DATA]
+                      ?.weekdays || LANGUAGE_DATA.french.weekdays
+
+        const TODAY_BUTTON =
+            language.customTodayButton ||
+            LANGUAGE_DATA[language.calendar as keyof typeof LANGUAGE_DATA]
+                ?.today ||
+            texts.todayButton ||
+            "Today"
+
+        return { MONTHS, WEEKDAYS, TODAY_BUTTON }
+    }
+
+    const { MONTHS, WEEKDAYS, TODAY_BUTTON } = getLanguageData()
 
     /**
      * SERVICES BUILDING LOGIC - FIXED VERSION
@@ -390,6 +609,13 @@ export default function BooklaCalendarFramerComplete(props: any) {
             enabled: s.enabled,
         })),
     })
+
+    /**
+     * SERVICE SELECTION VISIBILITY LOGIC
+     * Hide service selection section if only one service and feature is enabled
+     */
+    const shouldShowServiceSelection =
+        !features.hideServiceSelectionWhenSingle || activeServices.length > 1
 
     // Component State Management
     const today = new Date()
@@ -965,9 +1191,9 @@ export default function BooklaCalendarFramerComplete(props: any) {
         return (
             <div
                 style={{
-                    width: layout.width,
+                    width: "100%",
+                    maxWidth: `${layout.maxWidth}px`,
                     height: layout.height,
-                    maxWidth: "100%",
                     backgroundColor: theme.backgroundColor,
                     borderRadius: `${theme.borderRadius}px`,
                     boxShadow: "0 10px 40px rgba(0, 0, 0, 0.1)",
@@ -981,6 +1207,7 @@ export default function BooklaCalendarFramerComplete(props: any) {
                     justifyContent: "center",
                     textAlign: "center",
                     gap: `${layout.elementSpacing}px`,
+                    boxSizing: "border-box",
                 }}
             >
                 <div style={{ fontSize: "48px" }}>⚠️</div>
@@ -1027,8 +1254,9 @@ export default function BooklaCalendarFramerComplete(props: any) {
     }
 
     /**
-     * CALENDAR DAYS GENERATION
+     * FIXED: CALENDAR DAYS GENERATION - CORRECTED DATE LOGIC
      * Creates the calendar grid with available/unavailable days
+     * FIXED: Corrected past date detection and date formatting
      */
     const generateCalendarDays = () => {
         const firstDayOfMonth = new Date(currentYear, currentMonth, 1)
@@ -1043,7 +1271,11 @@ export default function BooklaCalendarFramerComplete(props: any) {
             calendarDays.push(
                 <div
                     key={`empty-${emptyDay}`}
-                    style={{ aspectRatio: "1" }}
+                    style={{
+                        aspectRatio: "1",
+                        padding: `${layout.calendarCellPadding}px`,
+                        boxSizing: "border-box",
+                    }}
                 ></div>
             )
         }
@@ -1054,11 +1286,14 @@ export default function BooklaCalendarFramerComplete(props: any) {
             const dateString = formatDateString(currentDate)
             const daySlots = availableSlots[dateString] || []
             const isDateAvailable = daySlots.length > 0
-            const isCurrentDay =
-                currentDate.toDateString() === today.toDateString()
-            const isPastDate = currentDate < today
+            const isCurrentDay = isToday(currentDate) // FIXED: Use new isToday function
+            const isPastDate = isDateInPast(currentDate) // FIXED: Use new isDateInPast function
 
-            // Style for each day cell
+            debugLog(
+                `Date ${dateString}: available=${isDateAvailable}, isToday=${isCurrentDay}, isPast=${isPastDate}`
+            )
+
+            // FIXED: Base style for each day cell
             let dayStyle: React.CSSProperties = {
                 aspectRatio: "1",
                 backgroundColor: isDateAvailable
@@ -1077,6 +1312,8 @@ export default function BooklaCalendarFramerComplete(props: any) {
                 fontFamily: theme.fontFamily,
                 fontSize: `${theme.fontSize}px`,
                 color: theme.textColor,
+                padding: `${layout.calendarCellPadding}px`,
+                boxSizing: "border-box",
             }
 
             // Highlight current day
@@ -1092,6 +1329,7 @@ export default function BooklaCalendarFramerComplete(props: any) {
                     style={dayStyle}
                     onClick={() => {
                         if (isDateAvailable && !isPastDate) {
+                            debugLog(`Clicked on date: ${dateString}`)
                             handleDateSelection(dateString)
                         }
                     }}
@@ -1129,13 +1367,13 @@ export default function BooklaCalendarFramerComplete(props: any) {
     }
 
     /**
-     * MAIN COMPONENT STYLES
-     * Responsive container with configurable spacing
+     * MAIN COMPONENT STYLES - FLEXIBLE WIDTH VERSION
+     * Container that adapts to parent size with maximum width limit
      */
     const containerStyle: React.CSSProperties = {
-        width: layout.width,
+        width: "100%", // Takes full width of parent container
+        maxWidth: `${layout.maxWidth}px`, // But never exceeds maxWidth
         height: layout.enableScroll ? "auto" : layout.height,
-        maxWidth: "100%",
         backgroundColor: theme.backgroundColor,
         borderRadius: `${theme.borderRadius}px`,
         boxShadow: "0 10px 40px rgba(0, 0, 0, 0.1)",
@@ -1145,24 +1383,11 @@ export default function BooklaCalendarFramerComplete(props: any) {
         color: theme.textColor,
         overflow: layout.enableScroll ? "visible" : "hidden",
         position: "relative",
+        boxSizing: "border-box", // Important: includes padding in width calculation
         ...(layout.enableScroll && {
             maxHeight: "none",
             minHeight: layout.height,
         }),
-    }
-
-    const badgeStyle: React.CSSProperties = {
-        position: "absolute",
-        top: `${layout.elementSpacing}px`,
-        right: `${layout.elementSpacing}px`,
-        backgroundColor: "#1d4ed8",
-        color: "white",
-        padding: "8px 12px",
-        borderRadius: `${theme.borderRadius * 0.5}px`,
-        fontSize: `${theme.fontSize * 0.8}px`,
-        fontWeight: "600",
-        textTransform: "uppercase",
-        letterSpacing: "0.5px",
     }
 
     /**
@@ -1178,11 +1403,6 @@ export default function BooklaCalendarFramerComplete(props: any) {
                     100% { transform: rotate(360deg); }
                 }
             `}</style>
-
-            {/* Services Count Badge */}
-            <div style={badgeStyle}>
-                {activeServices.length}/{servicesCount} Services
-            </div>
 
             {/* Header Section */}
             <div
@@ -1218,118 +1438,225 @@ export default function BooklaCalendarFramerComplete(props: any) {
                 )}
             </div>
 
-            {/* Service Selection Section */}
-            <div
-                style={{
-                    marginBottom: `${layout.sectionSpacing}px`,
-                    textAlign: "center",
-                }}
-            >
-                {texts.showServiceLabel && (
-                    <label
-                        style={{
-                            display: "block",
-                            marginBottom: `${layout.elementSpacing}px`,
-                            fontWeight: "600",
-                            fontSize: `${theme.fontSize * 1.1}px`,
-                        }}
-                    >
-                        {texts.serviceLabel}
-                    </label>
-                )}
-                <select
-                    value={selectedServiceId}
-                    onChange={(e) => setSelectedServiceId(e.target.value)}
+            {/* Service Selection Section - Conditional display based on service count and feature flag */}
+            {shouldShowServiceSelection && (
+                <div
                     style={{
-                        padding: `${layout.elementSpacing}px 20px`,
-                        borderRadius: `${theme.borderRadius * 0.75}px`,
-                        border: `2px solid ${theme.borderColor}`,
-                        backgroundColor: theme.backgroundColor,
-                        color: theme.textColor,
-                        fontSize: `${theme.fontSize}px`,
-                        fontFamily: theme.fontFamily,
-                        width: "100%",
-                        maxWidth: "400px",
-                        cursor: "pointer",
-                        outline: "none",
+                        marginBottom: `${layout.sectionSpacing}px`,
+                        textAlign: "center",
                     }}
-                    disabled={loading}
                 >
-                    {activeServices.map((service) => (
-                        <option key={service.id} value={service.id}>
-                            {service.name}
-                        </option>
-                    ))}
-                </select>
+                    {texts.showServiceLabel && (
+                        <label
+                            style={{
+                                display: "block",
+                                marginBottom: `${layout.elementSpacing}px`,
+                                fontWeight: "600",
+                                fontSize: `${theme.fontSize * 1.1}px`,
+                            }}
+                        >
+                            {texts.serviceLabel}
+                        </label>
+                    )}
+                    <select
+                        value={selectedServiceId}
+                        onChange={(e) => setSelectedServiceId(e.target.value)}
+                        style={{
+                            padding: `${layout.elementSpacing}px 20px`,
+                            borderRadius: `${theme.borderRadius * 0.75}px`,
+                            border: `2px solid ${theme.borderColor}`,
+                            backgroundColor: theme.backgroundColor,
+                            color: theme.textColor,
+                            fontSize: `${theme.fontSize}px`,
+                            fontFamily: theme.fontFamily,
+                            width: "100%",
+                            maxWidth: "400px",
+                            cursor: "pointer",
+                            outline: "none",
+                        }}
+                        disabled={loading}
+                    >
+                        {activeServices.map((service) => (
+                            <option key={service.id} value={service.id}>
+                                {service.name}
+                            </option>
+                        ))}
+                    </select>
 
-                {/* Service Details Display */}
-                {getCurrentService() && (
+                    {/* Service Details Display - Only show if there's content */}
+                    {getCurrentService() &&
+                        (features.showDescriptions ||
+                            features.showDuration ||
+                            features.showPrices) && (
+                            <div
+                                style={{
+                                    marginTop: `${layout.elementSpacing}px`,
+                                    padding: `${layout.elementSpacing}px`,
+                                    backgroundColor: theme.secondaryColor,
+                                    borderRadius: `${theme.borderRadius * 0.75}px`,
+                                    textAlign: "center",
+                                    maxWidth: "400px",
+                                    margin: `${layout.elementSpacing}px auto 0`,
+                                }}
+                            >
+                                {features.showDescriptions &&
+                                    getCurrentService()!.description && (
+                                        <div
+                                            style={{
+                                                fontSize: `${theme.fontSize * 0.9}px`,
+                                                color: `${theme.textColor}CC`,
+                                                marginBottom: "8px",
+                                            }}
+                                        >
+                                            {getCurrentService()!.description}
+                                        </div>
+                                    )}
+
+                                {features.showDuration &&
+                                    getCurrentService()!.duration && (
+                                        <div
+                                            style={{
+                                                fontSize: `${theme.fontSize * 0.85}px`,
+                                                color: `${theme.textColor}99`,
+                                                marginBottom:
+                                                    features.showPrices
+                                                        ? "8px"
+                                                        : "0",
+                                            }}
+                                        >
+                                            Duration:{" "}
+                                            {getCurrentService()!.duration}
+                                        </div>
+                                    )}
+
+                                {features.showPrices && (
+                                    <>
+                                        <div>
+                                            <span>Price: </span>
+                                            <span style={{ fontWeight: "600" }}>
+                                                {getCurrentService()!.basePrice}
+                                                € +{" "}
+                                                {getCurrentService()!.apaPrice}€
+                                                APA
+                                            </span>
+                                        </div>
+                                        <div
+                                            style={{
+                                                fontSize: `${theme.fontSize * 1.25}px`,
+                                                fontWeight: "700",
+                                                color: theme.primaryColor,
+                                                marginTop: "8px",
+                                            }}
+                                        >
+                                            Total:{" "}
+                                            {getCurrentService()!.basePrice +
+                                                getCurrentService()!.apaPrice}
+                                            €
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                </div>
+            )}
+
+            {/* Service Info Display for Single Service (when service selection is hidden) */}
+            {!shouldShowServiceSelection && getCurrentService() && (
+                <div
+                    style={{
+                        marginBottom: `${layout.sectionSpacing}px`,
+                        textAlign: "center",
+                    }}
+                >
                     <div
                         style={{
-                            marginTop: `${layout.elementSpacing}px`,
                             padding: `${layout.elementSpacing}px`,
                             backgroundColor: theme.secondaryColor,
                             borderRadius: `${theme.borderRadius * 0.75}px`,
                             textAlign: "center",
                             maxWidth: "400px",
-                            margin: `${layout.elementSpacing}px auto 0`,
+                            margin: "0 auto",
                         }}
                     >
-                        {features.showDescriptions &&
-                            getCurrentService()!.description && (
-                                <div
-                                    style={{
-                                        fontSize: `${theme.fontSize * 0.9}px`,
-                                        color: `${theme.textColor}CC`,
-                                        marginBottom: "8px",
-                                    }}
-                                >
-                                    {getCurrentService()!.description}
-                                </div>
-                            )}
+                        <h3
+                            style={{
+                                fontSize: `${theme.fontSize * 1.2}px`,
+                                fontWeight: "700",
+                                margin: "0 0 8px 0",
+                                color: theme.primaryColor,
+                            }}
+                        >
+                            {getCurrentService()!.name}
+                        </h3>
 
-                        {features.showDuration &&
-                            getCurrentService()!.duration && (
-                                <div
-                                    style={{
-                                        fontSize: `${theme.fontSize * 0.85}px`,
-                                        color: `${theme.textColor}99`,
-                                        marginBottom: features.showPrices
-                                            ? "8px"
-                                            : "0",
-                                    }}
-                                >
-                                    Duration: {getCurrentService()!.duration}
-                                </div>
-                            )}
+                        {/* Only show content container if there's actual content to display */}
+                        {(features.showDescriptions &&
+                            getCurrentService()!.description) ||
+                        (features.showDuration &&
+                            getCurrentService()!.duration) ||
+                        features.showPrices ? (
+                            <div>
+                                {features.showDescriptions &&
+                                    getCurrentService()!.description && (
+                                        <div
+                                            style={{
+                                                fontSize: `${theme.fontSize * 0.9}px`,
+                                                color: `${theme.textColor}CC`,
+                                                marginBottom: "8px",
+                                            }}
+                                        >
+                                            {getCurrentService()!.description}
+                                        </div>
+                                    )}
 
-                        {features.showPrices && (
-                            <>
-                                <div>
-                                    <span>Price: </span>
-                                    <span style={{ fontWeight: "600" }}>
-                                        {getCurrentService()!.basePrice}€ +{" "}
-                                        {getCurrentService()!.apaPrice}€ APA
-                                    </span>
-                                </div>
-                                <div
-                                    style={{
-                                        fontSize: `${theme.fontSize * 1.25}px`,
-                                        fontWeight: "700",
-                                        color: theme.primaryColor,
-                                        marginTop: "8px",
-                                    }}
-                                >
-                                    Total:{" "}
-                                    {getCurrentService()!.basePrice +
-                                        getCurrentService()!.apaPrice}
-                                    €
-                                </div>
-                            </>
-                        )}
+                                {features.showDuration &&
+                                    getCurrentService()!.duration && (
+                                        <div
+                                            style={{
+                                                fontSize: `${theme.fontSize * 0.85}px`,
+                                                color: `${theme.textColor}99`,
+                                                marginBottom:
+                                                    features.showPrices
+                                                        ? "8px"
+                                                        : "0",
+                                            }}
+                                        >
+                                            Duration:{" "}
+                                            {getCurrentService()!.duration}
+                                        </div>
+                                    )}
+
+                                {features.showPrices && (
+                                    <>
+                                        <div>
+                                            <span>Price: </span>
+                                            <span style={{ fontWeight: "600" }}>
+                                                {getCurrentService()!.basePrice}
+                                                € +{" "}
+                                                {getCurrentService()!.apaPrice}€
+                                                APA
+                                            </span>
+                                        </div>
+                                        <div
+                                            style={{
+                                                fontSize: `${theme.fontSize * 1.25}px`,
+                                                fontWeight: "700",
+                                                color: theme.primaryColor,
+                                                marginTop: "8px",
+                                            }}
+                                        >
+                                            Total:{" "}
+                                            {getCurrentService()!.basePrice +
+                                                getCurrentService()!.apaPrice}
+                                            €
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        ) : null}
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* Calendar Navigation */}
             <div
@@ -1396,7 +1723,7 @@ export default function BooklaCalendarFramerComplete(props: any) {
                         }}
                         disabled={loading}
                     >
-                        {texts.todayButton}
+                        {TODAY_BUTTON}
                     </button>
                 </div>
 
@@ -1438,10 +1765,11 @@ export default function BooklaCalendarFramerComplete(props: any) {
                         style={{
                             textAlign: "center",
                             fontWeight: "bold",
-                            padding: "8px 0",
+                            padding: `${layout.calendarCellPadding}px`,
                             fontSize: `${theme.fontSize * 0.9}px`,
                             textTransform: "uppercase",
                             letterSpacing: "0.5px",
+                            boxSizing: "border-box",
                         }}
                     >
                         {weekday}
@@ -1535,7 +1863,7 @@ export default function BooklaCalendarFramerComplete(props: any) {
                         </button>
                     </div>
                 ) : (
-                    // Calendar Days
+                    // Calendar Days - Using FIXED version
                     generateCalendarDays()
                 )}
             </div>
@@ -1743,7 +2071,8 @@ export default function BooklaCalendarFramerComplete(props: any) {
                                 fontSize: `${theme.fontSize}px`,
                             }}
                         >
-                            Date: {selectedDate}
+                            {/* FIXED: Use formatDateForDisplay to show correct date */}
+                            Date: {formatDateForDisplay(selectedDate)}
                         </p>
 
                         <div style={{ marginBottom: "24px" }}>
@@ -1857,7 +2186,8 @@ export default function BooklaCalendarFramerComplete(props: any) {
                                 fontSize: `${theme.fontSize}px`,
                             }}
                         >
-                            {selectedDate} at{" "}
+                            {/* FIXED: Use formatDateForDisplay to show correct date */}
+                            {formatDateForDisplay(selectedDate)} at{" "}
                             {formatTimeString(selectedTimeSlot.startTime)}
                         </p>
 
@@ -2186,7 +2516,7 @@ export default function BooklaCalendarFramerComplete(props: any) {
                             }}
                         ></div>
                         <span style={{ fontSize: `${theme.fontSize * 0.9}px` }}>
-                            Today
+                            {TODAY_BUTTON}
                         </span>
                     </div>
                 </div>
@@ -2229,8 +2559,11 @@ export default function BooklaCalendarFramerComplete(props: any) {
  * This configuration defines all the customizable properties in Framer.
  * Properties are organized into logical groups for better UX.
  *
- * IMPORTANT: Services are handled as individual props (service1, service2, etc.)
- * instead of nested objects due to Framer limitations.
+ * FEATURES:
+ * - Calendar cell padding configuration
+ * - Service selection visibility control
+ * - Multi-language support for calendar
+ * - Flexible width with maximum width setting
  */
 
 addPropertyControls(BooklaCalendarFramerComplete, {
@@ -2263,6 +2596,68 @@ addPropertyControls(BooklaCalendarFramerComplete, {
                 title: "Resource ID",
                 defaultValue: "8f653843-ae64-4d1a-9701-3a1ab12d133c",
                 description: "Default resource ID for bookings",
+            },
+        },
+    },
+
+    // === LANGUAGE CONFIGURATION GROUP ===
+    language: {
+        type: ControlType.Object,
+        title: "🌍 Language & Calendar",
+        controls: {
+            calendar: {
+                type: ControlType.Enum,
+                title: "Calendar Language",
+                defaultValue: "french",
+                options: [
+                    "french",
+                    "english",
+                    "spanish",
+                    "german",
+                    "italian",
+                    "portuguese",
+                    "dutch",
+                ],
+                optionTitles: [
+                    "Français",
+                    "English",
+                    "Español",
+                    "Deutsch",
+                    "Italiano",
+                    "Português",
+                    "Nederlands",
+                ],
+                description:
+                    "Choose predefined language for months and weekdays",
+            },
+            customMonths: {
+                type: ControlType.Array,
+                title: "Custom Months (Optional)",
+                propertyControl: {
+                    type: ControlType.String,
+                    title: "Month",
+                },
+                description:
+                    "Override months with custom names (must provide all 12)",
+                maxCount: 12,
+            },
+            customWeekdays: {
+                type: ControlType.Array,
+                title: "Custom Weekdays (Optional)",
+                propertyControl: {
+                    type: ControlType.String,
+                    title: "Weekday",
+                },
+                description:
+                    "Override weekdays with custom names (must provide all 7)",
+                maxCount: 7,
+            },
+            customTodayButton: {
+                type: ControlType.String,
+                title: "Custom Today Button Text",
+                defaultValue: "",
+                description:
+                    "Override today button text (leave empty to use language default)",
             },
         },
     },
@@ -2429,7 +2824,7 @@ addPropertyControls(BooklaCalendarFramerComplete, {
         description: "How many services to show (1-10)",
     },
 
-    // Individual service controls (shown/hidden based on servicesCount)
+    // Individual service controls
     service1: {
         type: ControlType.Object,
         title: "Service 1",
@@ -2567,7 +2962,7 @@ addPropertyControls(BooklaCalendarFramerComplete, {
             },
         },
     },
-    // Services 4-10 with similar structure...
+    // Services 4-10 (hidden conditionally)
     service4: {
         type: ControlType.Object,
         title: "Service 4",
@@ -3265,13 +3660,15 @@ addPropertyControls(BooklaCalendarFramerComplete, {
         type: ControlType.Object,
         title: "📐 Layout & Spacing",
         controls: {
-            width: {
+            maxWidth: {
                 type: ControlType.Number,
-                title: "Width",
+                title: "Maximum Width",
                 defaultValue: 800,
                 min: 300,
                 max: 1200,
                 step: 50,
+                description:
+                    "Maximum width - component will be smaller if container is smaller",
             },
             height: {
                 type: ControlType.Number,
@@ -3319,6 +3716,15 @@ addPropertyControls(BooklaCalendarFramerComplete, {
                 max: 20,
                 step: 2,
             },
+            calendarCellPadding: {
+                type: ControlType.Number,
+                title: "Calendar Cell Padding",
+                defaultValue: 8,
+                min: 2,
+                max: 24,
+                step: 2,
+                description: "Internal padding for each calendar day cell",
+            },
             modalPadding: {
                 type: ControlType.Number,
                 title: "Modal Padding",
@@ -3352,6 +3758,13 @@ addPropertyControls(BooklaCalendarFramerComplete, {
                 title: "Show Duration",
                 defaultValue: true,
                 description: "Display service duration",
+            },
+            hideServiceSelectionWhenSingle: {
+                type: ControlType.Boolean,
+                title: "Hide Service Selection When Single",
+                defaultValue: true,
+                description:
+                    "Automatically hide service dropdown when only one service is active",
             },
             debugMode: {
                 type: ControlType.Boolean,
